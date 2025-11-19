@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "job-research": {
+      "command": "node",
+      "args": ["/Users/samarmustafa/Documents/1Samar/50-apps-to-launch/cv-job-match/job-research-system/job-research-mcp/dist/index.js"]
+    }
+  }
+}
