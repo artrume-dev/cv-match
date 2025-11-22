@@ -85,7 +85,9 @@ app.get('/health', (_req, res) => {
 app.get('/api/companies', (_req, res) => {
   try {
     const companies = db.getAllCompanies();
-    res.json({ companies });
+    // Return array of company names for the UI
+    const companyNames = companies.map((c: any) => c.company_name);
+    res.json(companyNames);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -334,6 +336,79 @@ app.post('/api/profile', (req, res) => {
   }
 });
 
+// Save profile with preferences (used by onboarding)
+app.post('/api/profile/save', (req, res) => {
+  try {
+    const {
+      linkedin_url,
+      full_name,
+      headline,
+      summary,
+      current_position,
+      years_of_experience,
+      skills,
+      experience,
+      education,
+      preferred_industries,
+      preferred_locations,
+      preferred_job_types,
+    } = req.body;
+
+    if (!full_name) {
+      return res.status(400).json({ error: 'Missing required field: full_name' });
+    }
+
+    const profile = db.saveUserProfile({
+      linkedin_url,
+      full_name,
+      headline,
+      summary,
+      current_position,
+      years_of_experience,
+      skills,
+      experience,
+      education,
+      preferred_industries,
+      preferred_locations,
+      preferred_job_types,
+    });
+
+    res.json(profile);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// LinkedIn profile import (simplified - returns mock data for now)
+app.post('/api/profile/linkedin-import', async (req, res) => {
+  try {
+    const { linkedin_url } = req.body;
+
+    if (!linkedin_url) {
+      return res.status(400).json({ error: 'linkedin_url is required' });
+    }
+
+    // TODO: Implement actual LinkedIn scraping
+    // For now, return mock data to demonstrate the flow
+    console.log('📎 LinkedIn import requested:', linkedin_url);
+    
+    // Mock response - in production, this would scrape/parse LinkedIn
+    const mockProfile = {
+      full_name: '',
+      headline: '',
+      summary: '',
+      current_position: '',
+      years_of_experience: 0,
+      message: 'LinkedIn import is not yet implemented. Please enter details manually.',
+    };
+
+    res.json(mockProfile);
+  } catch (error: any) {
+    console.error('LinkedIn import error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get('/api/profile', (_req, res) => {
   try {
     const profile = db.getUserProfile();
@@ -387,8 +462,8 @@ app.post('/api/tools/get_job_details', (req, res) => {
 
 app.post('/api/tools/analyze_job_fit', (req, res) => {
   try {
-    const { job_id, cv_path } = req.body;
-    const result = analyzeJobFit(db, job_id, cv_path);
+    const { job_id, cv_path, cv_id } = req.body;
+    const result = analyzeJobFit(db, job_id, cv_path, cv_id);
     res.json(result);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -397,9 +472,33 @@ app.post('/api/tools/analyze_job_fit', (req, res) => {
 
 app.post('/api/tools/batch_analyze_jobs', (req, res) => {
   try {
-    const { job_ids, cv_path } = req.body;
-    const result = batchAnalyzeJobs(db, job_ids, cv_path);
+    const { job_ids, cv_path, cv_id } = req.body;
+    const result = batchAnalyzeJobs(db, job_ids, cv_path, cv_id);
     res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Analyze all jobs against uploaded CV
+app.post('/api/jobs/analyze-all', (req, res) => {
+  try {
+    const { cv_path, cv_id } = req.body;
+
+    // Get all jobs
+    const jobs = getJobs(db);
+    // Use job_id (string) not id (number) - analyzeJobFit expects job_id
+    const jobIds = jobs.map((job: any) => job.job_id);
+
+    // Batch analyze all jobs
+    const result = batchAnalyzeJobs(db, jobIds, cv_path, cv_id);
+
+    res.json({
+      success: true,
+      analyzed_count: result.length,
+      failed_count: jobIds.length - result.length,
+      results: result
+    });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

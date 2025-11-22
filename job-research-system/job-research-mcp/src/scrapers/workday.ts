@@ -50,11 +50,7 @@ export class WorkdayScraper extends BaseScraper {
       for (const job of jobs) {
         const title = job.title || '';
         
-        // Filter for relevant roles
-        if (!this.isRelevantRole(title)) {
-          continue;
-        }
-
+        // Scrape all jobs - let user preferences and CV alignment do the filtering
         const location = job.locationsText || 'Not specified';
         const jobUrl = `https://${this.workdayId}.wd5.myworkdayjobs.com${job.externalPath}`;
         
@@ -79,19 +75,6 @@ export class WorkdayScraper extends BaseScraper {
       console.error(`Error scraping ${this.company}:`, error);
       return [];
     }
-  }
-
-  private isRelevantRole(title: string): boolean {
-    const relevantKeywords = [
-      'design system', 'developer experience', 'dx', 'design engineer',
-      'product design', 'frontend', 'full stack', 'software engineer',
-      'ai', 'machine learning', 'ml', 'nlp', 'data scientist',
-      'product manager', 'technical writer', 'devops', 'platform',
-      'infrastructure', 'backend', 'engineer'
-    ];
-
-    const titleLower = title.toLowerCase();
-    return relevantKeywords.some(keyword => titleLower.includes(keyword));
   }
 
   private extractRequirements(text: string): string {

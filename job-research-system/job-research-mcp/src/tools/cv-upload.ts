@@ -35,7 +35,17 @@ export async function parseDOCX(filePath: string): Promise<string> {
     return result.value;
   } catch (error) {
     console.error('Error parsing DOCX:', error);
-    throw new Error('Failed to parse DOCX file');
+    // Try reading as plain text if DOCX parsing fails
+    console.log('Attempting to read as plain text...');
+    try {
+      const content = await readFile(filePath, 'utf-8');
+      if (content && content.trim().length > 0) {
+        return content;
+      }
+    } catch (textError) {
+      console.error('Failed to read as plain text:', textError);
+    }
+    throw new Error('Failed to parse DOCX file. Please ensure the file is a valid DOCX document or try uploading as PDF or TXT.');
   }
 }
 

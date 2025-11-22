@@ -40,8 +40,8 @@ export class SmartRecruitersScraper extends BaseScraper {
       for (const job of jobs) {
         const title = job.name || job.title || '';
         
-        // Filter for relevant roles
-        if (!title || !this.isRelevantRole(title)) {
+        // Scrape all jobs - let user preferences and CV alignment do the filtering
+        if (!title) {
           continue;
         }
 
@@ -84,19 +84,6 @@ export class SmartRecruitersScraper extends BaseScraper {
       return parts.join(', ') || 'Not specified';
     }
     return 'Not specified';
-  }
-
-  private isRelevantRole(title: string): boolean {
-    const relevantKeywords = [
-      'design system', 'developer experience', 'dx', 'design engineer',
-      'product design', 'frontend', 'full stack', 'software engineer',
-      'ai', 'machine learning', 'ml', 'nlp', 'data scientist',
-      'product manager', 'technical writer', 'devops', 'platform',
-      'infrastructure', 'backend', 'engineer'
-    ];
-
-    const titleLower = title.toLowerCase();
-    return relevantKeywords.some(keyword => titleLower.includes(keyword));
   }
 
   private extractRequirements(text: string): string {

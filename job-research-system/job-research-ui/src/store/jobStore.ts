@@ -23,6 +23,7 @@ interface JobStore {
   selectedCompanies: string[];
   isLoading: boolean;
   error: string | null;
+  usePreferences: boolean;
 
   // Actions
   setJobs: (jobs: Job[]) => void;
@@ -42,6 +43,7 @@ interface JobStore {
   deselectAllCompanies: () => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
+  setUsePreferences: (use: boolean) => void;
   reset: () => void;
   loadJobs: () => Promise<void>;
 
@@ -62,17 +64,41 @@ const initialState = {
   selectedCompanies: [],
   isLoading: false,
   error: null,
+  usePreferences: true,
 };
 
 export const useJobStore = create<JobStore>((set, get) => ({
   ...initialState,
 
-  setJobs: (jobs) => set({ jobs, totalJobs: jobs.length }),
+  setJobs: (jobs) => {
+    // Parse JSON fields from database
+    const parsedJobs = jobs.map(job => ({
+      ...job,
+      strong_matches: typeof job.strong_matches === 'string' 
+        ? JSON.parse(job.strong_matches) 
+        : job.strong_matches,
+      gaps: typeof job.gaps === 'string' 
+        ? JSON.parse(job.gaps) 
+        : job.gaps,
+    }));
+    set({ jobs: parsedJobs, totalJobs: parsedJobs.length });
+  },
 
   addJobs: (newJobs) =>
     set((state) => {
+      // Parse JSON fields from database
+      const parsedJobs = newJobs.map(job => ({
+        ...job,
+        strong_matches: typeof job.strong_matches === 'string' 
+          ? JSON.parse(job.strong_matches) 
+          : job.strong_matches,
+        gaps: typeof job.gaps === 'string' 
+          ? JSON.parse(job.gaps) 
+          : job.gaps,
+      }));
+      
       const existingIds = new Set(state.jobs.map((j) => j.id));
-      const uniqueJobs = newJobs.filter((j) => !existingIds.has(j.id));
+      const uniqueJobs = parsedJobs.filter((j) => !existingIds.has(j.id));
       const allJobs = [...state.jobs, ...uniqueJobs];
       return { jobs: allJobs, totalJobs: allJobs.length };
     }),
@@ -128,6 +154,8 @@ export const useJobStore = create<JobStore>((set, get) => ({
 
   setError: (error) => set({ error }),
 
+  setUsePreferences: (use) => set({ usePreferences: use }),
+
   reset: () => set(initialState),
 
   loadJobs: async () => {
@@ -158,6 +186,159 @@ export const useJobStore = create<JobStore>((set, get) => ({
   filteredJobs: () => {
     const state = get();
     let filtered = state.jobs;
+
+    // Import user preferences from userStore
+    // Note: This creates a dependency on userStore, but it's necessary for preference-based filtering
+    const userProfile = typeof window !== 'undefined' 
+      ? JSON.parse(localStorage.getItem('user-storage') || '{}')?.state?.profile 
+      : null;
+
+    // Filter by user preferences (from onboarding) - only if usePreferences is true
+    if (state.usePreferences && userProfile) {
+      // Filter by preferred locations
+      if (userProfile.preferred_locations) {
+        try {
+          const preferredLocations = JSON.parse(userProfile.preferred_locations);
+          if (preferredLocations.length > 0) {
+            filtered = filtered.filter((job) => {
+              const jobLocation = (job.location || '').toLowerCase();
+              
+              // If job has ambiguous location, match ALL preferences (more lenient)
+              const ambiguousLocations = ['multiple locations', 'various', 'various locations', 'multiple', 'flexible'];
+              if (ambiguousLocations.some(amb => jobLocation.includes(amb))) {
+                return true; // Show jobs with flexible locations to everyone
+              }
+              
+              // Check if job matches any preferred location
+              return preferredLocations.some((loc: string) => {
+                const prefLoc = loc.toLowerCase();
+                
+                // Special handling for "Remote" preference
+                if (prefLoc === 'remote') {
+                  return job.remote === true || jobLocation.includes('remote');
+                }
+                
+                // Handle common abbreviations
+                const locationMap: Record<string, string[]> = {
+                  'sf': ['san francisco', 'sf'],
+                  'san francisco': ['san francisco', 'sf'],
+                  'nyc': ['new york', 'nyc', 'ny'],
+                  'new york': ['new york', 'nyc', 'ny'],
+                  'la': ['los angeles', 'la'],
+                  'los angeles': ['los angeles', 'la'],
+                  'seattle': ['seattle', 'wa'],
+                  'austin': ['austin', 'tx'],
+                  'boston': ['boston', 'ma'],
+                  'chicago': ['chicago', 'il'],
+                  'uk': ['london', 'uk', 'united kingdom'],
+                  'london': ['london', 'uk'],
+                  'india': ['bangalore', 'india', 'mumbai', 'delhi'],
+                  'bangalore': ['bangalore', 'india'],
+                };
+                
+                // Get all variations of this location
+                const variations = locationMap[prefLoc] || [prefLoc];
+                
+                // Check if job location contains any variation
+                return variations.some(variant => jobLocation.includes(variant));
+              });
+            });
+          }
+        } catch (e) {
+          console.warn('Failed to parse preferred_locations:', e);
+        }
+      }
+
+      // Filter by preferred job types
+      if (userProfile.preferred_job_types) {
+        try {
+          const preferredJobTypes = JSON.parse(userProfile.preferred_job_types);
+          if (preferredJobTypes.length > 0) {
+            filtered = filtered.filter((job) => {
+              const jobTitle = (job.title || '').toLowerCase();
+              const jobDesc = (job.description || '').toLowerCase();
+              const jobLocation = (job.location || '').toLowerCase();
+              
+              return preferredJobTypes.some((type: string) => {
+                const prefType = type.toLowerCase();
+                
+                // Match job types
+                if (prefType === 'remote') {
+                  return job.remote === true || jobLocation.includes('remote');
+                }
+                if (prefType === 'full-time') {
+                  return jobTitle.includes('full') || jobTitle.includes('full-time') || 
+                         jobDesc.includes('full-time') || !jobTitle.includes('contract') && !jobTitle.includes('part-time');
+                }
+                if (prefType === 'part-time') {
+                  return jobTitle.includes('part') || jobTitle.includes('part-time') || jobDesc.includes('part-time');
+                }
+                if (prefType === 'contract') {
+                  return jobTitle.includes('contract') || jobDesc.includes('contract') || jobDesc.includes('contractor');
+                }
+                if (prefType === 'hybrid') {
+                  return jobLocation.includes('hybrid') || jobDesc.includes('hybrid');
+                }
+                if (prefType === 'on-site') {
+                  return !job.remote && !jobLocation.includes('remote');
+                }
+                
+                // Generic match
+                return jobTitle.includes(prefType) || jobDesc.includes(prefType);
+              });
+            });
+          }
+        } catch (e) {
+          console.warn('Failed to parse preferred_job_types:', e);
+        }
+      }
+
+      // Filter by preferred industries (check job title, description, tech_stack)
+      if (userProfile.preferred_industries) {
+        try {
+          const preferredIndustries = JSON.parse(userProfile.preferred_industries);
+          if (preferredIndustries.length > 0) {
+            filtered = filtered.filter((job) => {
+              const jobTitle = (job.title || '').toLowerCase();
+              const jobDesc = (job.description || '').toLowerCase();
+              const techStack = (job.tech_stack || '').toLowerCase();
+              const company = (job.company || '').toLowerCase();
+              
+              return preferredIndustries.some((industry: string) => {
+                const ind = industry.toLowerCase();
+                
+                // Map industry keywords to job-related terms
+                const industryKeywords: Record<string, string[]> = {
+                  'ai/ml': ['ai', 'machine learning', 'ml', 'artificial intelligence', 'llm', 'nlp'],
+                  'product management': ['product', 'pm', 'product manager', 'product management'],
+                  'design systems': ['design system', 'design systems', 'component library', 'ui kit'],
+                  'developer tools': ['developer tools', 'dx', 'developer experience', 'devtools', 'api'],
+                  'infrastructure': ['infrastructure', 'devops', 'platform', 'cloud', 'kubernetes', 'aws'],
+                  'security': ['security', 'infosec', 'cybersecurity', 'compliance'],
+                  'data': ['data', 'analytics', 'data science', 'data engineer'],
+                  'frontend': ['frontend', 'front-end', 'react', 'vue', 'angular', 'typescript'],
+                  'backend': ['backend', 'back-end', 'api', 'server', 'node', 'python', 'java'],
+                  'mobile': ['mobile', 'ios', 'android', 'react native', 'flutter'],
+                };
+                
+                // Get keywords for this industry
+                const keywords = industryKeywords[ind] || [ind];
+                
+                // Check if any keyword matches
+                return keywords.some(keyword => 
+                  jobTitle.includes(keyword) || 
+                  jobDesc.includes(keyword) || 
+                  techStack.includes(keyword) ||
+                  company.includes(keyword)
+                );
+              });
+            });
+          }
+        } catch (e) {
+          console.warn('Failed to parse preferred_industries:', e);
+        }
+      }
+    }
 
     // Filter by selected companies
     if (state.selectedCompanies.length > 0) {
@@ -200,6 +381,13 @@ export const useJobStore = create<JobStore>((set, get) => ({
     if (state.filters.remoteOnly) {
       filtered = filtered.filter((job) => job.remote);
     }
+
+    // Sort by alignment score (match score) descending - highest matches first
+    filtered = filtered.sort((a, b) => {
+      const scoreA = a.alignment_score ?? 0;
+      const scoreB = b.alignment_score ?? 0;
+      return scoreB - scoreA;
+    });
 
     return filtered;
   },

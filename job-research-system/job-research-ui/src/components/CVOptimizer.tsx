@@ -151,9 +151,9 @@ export function CVOptimizer({ job, onClose }: CVOptimizerProps) {
   const selectedVersionData = versions.find(v => v.type === selectedVersion);
 
   return (
-    <div className="h-full flex flex-col bg-background">
+    <div className="h-full flex flex-col bg-white">
       {/* Header */}
-      <div className="border-b bg-background p-4">
+      <div className="border-b border-gray-200 bg-white px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold flex items-center gap-2">

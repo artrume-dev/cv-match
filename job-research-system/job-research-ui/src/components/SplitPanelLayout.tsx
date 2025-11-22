@@ -33,10 +33,10 @@ export function SplitPanelLayout({
           </Panel>
 
           {/* Resize Handle */}
-          <PanelResizeHandle className="w-2 bg-border hover:bg-primary transition-colors relative group">
-            <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-1 bg-border group-hover:bg-primary transition-colors" />
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 p-1 rounded bg-background border shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
-              <GripVertical className="h-4 w-4 text-muted-foreground" />
+          <PanelResizeHandle className="w-1 bg-gray-200 hover:bg-primary transition-colors relative group">
+            <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-1 bg-gray-200 group-hover:bg-primary transition-colors" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 p-1 rounded bg-white border border-gray-200 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
+              <GripVertical className="h-4 w-4 text-gray-400" />
             </div>
           </PanelResizeHandle>
 

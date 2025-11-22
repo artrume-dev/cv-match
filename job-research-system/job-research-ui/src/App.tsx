@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useUserStore } from './store/userStore';
 import { useJobStore } from './store/jobStore';
 import { useUIStore } from './store/uiStore';
@@ -10,28 +10,54 @@ import { CompanySelector } from './components/CompanySelector';
 import { AddCompanyModal } from './components/AddCompanyModal';
 import { CVUploader } from './components/CVUploader';
 import { LinkedInImport } from './components/LinkedInImport';
+import { OnboardingWizard } from './components/OnboardingWizard';
+import { CustomAlert, AnalyzeJobsAlert } from './components/ui/alert-dialog-custom';
+// import { ChatInterface } from './components/ChatInterface'; // TODO: Re-enable after LLM integration
 import { Button } from './components/ui/button';
-import { Badge } from './components/ui/badge';
-import { Briefcase, Upload, User, Settings } from 'lucide-react';
+import { Briefcase, Search, Bell, Plus, Command } from 'lucide-react';
 
 function App() {
-  const { isOnboarded, profile, activeCVId } = useUserStore();
+  const { isOnboarded, profile, setOnboarded, setCVDocuments, setActiveCVId } = useUserStore();
   const { jobs, setJobs, selectedCompanies, selectedJob } = useJobStore();
   const {
     isCompanySelectorOpen,
     openCompanySelector,
     isCVUploaderOpen,
-    openCVUploader,
     isLinkedInImportOpen,
     openLinkedInImport,
+    isEditProfileOpen,
+    closeEditProfile,
     rightPanelView,
     setRightPanelView,
+    customAlert,
+    closeAlert,
+    analyzeJobsAlert,
+    closeAnalyzeJobsAlert,
   } = useUIStore();
+
+  const [showOnboarding, setShowOnboarding] = useState(!isOnboarded);
+  // const [showChat, setShowChat] = useState(false); // TODO: Re-enable after LLM integration
 
   // Load initial data
   useEffect(() => {
     loadJobs();
+    loadCVs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCompanies]);
+
+  // Update onboarding state
+  useEffect(() => {
+    setShowOnboarding(!isOnboarded);
+  }, [isOnboarded]);
+
+  // Reload jobs after onboarding completes
+  useEffect(() => {
+    if (isOnboarded && jobs.length === 0) {
+      console.log('🔄 Onboarding complete, reloading jobs...');
+      setTimeout(() => loadJobs(), 1000);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOnboarded]);
 
   const loadJobs = async () => {
     try {
@@ -53,20 +79,48 @@ function App() {
     }
   };
 
+  const loadCVs = async () => {
+    try {
+      // Fetch CV list from API
+      const response = await fetch('http://localhost:3001/api/cv/list');
+
+      if (response.ok) {
+        const data = await response.json();
+        const cvs = data.cvs || [];
+        setCVDocuments(cvs);
+        
+        // Set active CV if one exists
+        const activeCV = cvs.find((cv: any) => cv.is_active);
+        if (activeCV) {
+          setActiveCVId(activeCV.id);
+        }
+        
+        console.log(`📄 Loaded ${cvs.length} CV documents, active: ${activeCV?.id || 'none'}`);
+      }
+    } catch (err) {
+      console.error('Failed to load CVs:', err);
+    }
+  };
+
   // Check onboarding status and show modals
   useEffect(() => {
-    if (!isOnboarded && !profile) {
-      // Show LinkedIn import on first load
+    // Only auto-show LinkedIn import if user hasn't completed onboarding and has no profile
+    if (!isOnboarded && !profile && !showOnboarding) {
       openLinkedInImport();
     }
-  }, [isOnboarded, profile]);
-
-  const hasUploadedCV = activeCVId !== null;
-  const hasSelectedCompanies = selectedCompanies.length > 0;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOnboarded, profile, showOnboarding]);
 
   // Render right panel based on current view
   const renderRightPanel = () => {
     console.log('📱 Rendering right panel, view:', rightPanelView);
+    
+    // Show chat if enabled
+    // TODO: Re-enable after LLM integration
+    // if (showChat) {
+    //   return <ChatInterface onClose={() => setShowChat(false)} />;
+    // }
+    
     switch (rightPanelView) {
       case 'optimizer':
         const job = selectedJob();
@@ -90,73 +144,71 @@ function App() {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-background">
+    <div className="h-screen flex flex-col bg-gray-50">
+      {/* Show onboarding wizard for new users */}
+      {showOnboarding && (
+        <OnboardingWizard onComplete={() => setShowOnboarding(false)} />
+      )}
+
       {/* Header */}
-      <header className="border-b bg-card shrink-0">
-        <div className="container mx-auto px-4 py-4">
+      <header className="bg-header text-header-foreground shrink-0 border-b border-gray-800">
+        <div className="mx-auto px-6 py-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div>
-                <h1 className="text-2xl font-bold flex items-center gap-2">
-                  <Briefcase className="h-6 w-6 text-primary" />
-                  AI Job Research System
-                </h1>
-                <p className="text-sm text-muted-foreground mt-0.5">
-                  Find, analyze, and optimize your perfect AI role
-                </p>
+            {/* Logo and Navigation */}
+            <div className="flex items-center gap-8">
+              <div className="flex items-center gap-2">
+                <Briefcase className="h-5 w-5" />
+                <span className="text-lg font-semibold">TalentNode</span>
               </div>
+
+              <nav className="flex items-center gap-6 text-sm">
+                <button className="hover:text-gray-300 transition-colors">Research</button>
+                <button className="hover:text-gray-300 transition-colors">Applications</button>
+                <button className="hover:text-gray-300 transition-colors">Resume Base</button>
+              </nav>
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2"
-                onClick={openLinkedInImport}
-              >
-                <User className="h-4 w-4" />
-                {profile ? 'Edit Profile' : 'Add Profile'}
-              </Button>
+            {/* Search and Actions */}
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search jobs, skills, or companies..."
+                  className="bg-gray-900 text-white pl-10 pr-12 py-1.5 rounded-md text-sm w-80 focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-gray-500 text-xs">
+                  <Command className="h-3 w-3" />
+                  <span>K</span>
+                </div>
+              </div>
 
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
-                className="gap-2"
-                onClick={openCVUploader}
+                className="text-header-foreground hover:text-gray-300 hover:bg-gray-900"
+                onClick={() => {}}
               >
-                <Upload className="h-4 w-4" />
-                {hasUploadedCV ? 'Upload New CV' : 'Upload CV'}
+                <Bell className="h-5 w-5" />
               </Button>
 
               <Button
                 variant="default"
                 size="sm"
-                className="gap-2"
-                onClick={openCompanySelector}
+                className="gap-2 bg-white text-black hover:bg-gray-100"
+                onClick={() => {
+                  setOnboarded(false);
+                  setShowOnboarding(true);
+                }}
               >
-                <Settings className="h-4 w-4" />
-                Select Companies ({selectedCompanies.length})
+                <Plus className="h-4 w-4" />
+                New Project
               </Button>
-            </div>
-          </div>
 
-          {/* Status Indicators */}
-          <div className="flex items-center gap-2 mt-4">
-            <Badge variant={profile ? 'default' : 'outline'}>
-              {profile ? `Profile: ${profile.full_name}` : 'No Profile'}
-            </Badge>
-            <Badge variant={hasUploadedCV ? 'default' : 'outline'}>
-              {hasUploadedCV ? 'CV Uploaded' : 'No CV'}
-            </Badge>
-            <Badge variant={hasSelectedCompanies ? 'default' : 'outline'}>
-              {hasSelectedCompanies
-                ? `${selectedCompanies.length} Companies Selected`
-                : 'No Companies'}
-            </Badge>
-            <Badge variant="outline" className="ml-auto">
-              {jobs.length} Jobs Found
-            </Badge>
+              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-white font-semibold text-sm">
+                SM
+              </div>
+            </div>
           </div>
         </div>
       </header>
@@ -166,14 +218,14 @@ function App() {
         <SplitPanelLayout
           leftPanel={<JobsList onCompanySelectorOpen={openCompanySelector} />}
           rightPanel={renderRightPanel()}
-          defaultLeftSize={50}
+          defaultLeftSize={38}
           minLeftSize={30}
-          minRightSize={30}
+          minRightSize={40}
         />
       </div>
 
-      {/* Footer */}
-      <footer className="border-t py-3 bg-card shrink-0">
+      {/* Footer - Hidden for TalentNode design */}
+      {/* <footer className="border-t py-3 bg-card shrink-0">
         <div className="container mx-auto px-4 text-center text-xs text-muted-foreground">
           <div className="flex items-center justify-center gap-4">
             <span>Powered by MCP Server</span>
@@ -185,13 +237,44 @@ function App() {
             </Badge>
           </div>
         </div>
-      </footer>
+      </footer> */}
 
       {/* Modals */}
       {isCompanySelectorOpen && <CompanySelector />}
       <AddCompanyModal onCompanyAdded={loadJobs} />
       {isCVUploaderOpen && <CVUploader />}
       {isLinkedInImportOpen && <LinkedInImport />}
+      {isEditProfileOpen && (
+        <OnboardingWizard
+          onComplete={() => {
+            closeEditProfile();
+            loadJobs();
+          }}
+        />
+      )}
+
+      {/* Custom Alerts */}
+      <CustomAlert
+        open={customAlert.isOpen}
+        onOpenChange={closeAlert}
+        title={customAlert.title}
+        description={customAlert.description}
+        confirmText={customAlert.confirmText}
+        cancelText={customAlert.cancelText}
+        onConfirm={customAlert.onConfirm}
+        onCancel={customAlert.onCancel}
+        variant={customAlert.variant}
+        showCancel={customAlert.showCancel}
+      />
+
+      <AnalyzeJobsAlert
+        open={analyzeJobsAlert.isOpen}
+        onOpenChange={closeAnalyzeJobsAlert}
+        filteredJobsCount={analyzeJobsAlert.filteredJobsCount}
+        totalJobsCount={analyzeJobsAlert.totalJobsCount}
+        onAnalyzeFiltered={analyzeJobsAlert.onAnalyzeFiltered || (() => {})}
+        onAnalyzeAll={analyzeJobsAlert.onAnalyzeAll || (() => {})}
+      />
     </div>
   );
 }

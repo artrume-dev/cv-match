@@ -123,7 +123,7 @@ Also identify:
 - Strong matches between CV and job requirements
 - Gaps that need addressing
 
-Return your response in this exact JSON format:
+Return your response in this exact JSON format (ensure all strings are properly escaped):
 \`\`\`json
 {
   "baseline_alignment": 45,
@@ -145,7 +145,7 @@ Return your response in this exact JSON format:
         "Updated professional summary",
         "Highlighted relevant experience"
       ],
-      "content": "# Full CV content here..."
+      "content": "Full CV content here in markdown format"
     },
     {
       "type": "optimized",
@@ -156,7 +156,7 @@ Return your response in this exact JSON format:
         "Reordered achievements by relevance",
         "Updated skills section priority"
       ],
-      "content": "# Full CV content here..."
+      "content": "Full CV content here in markdown format"
     },
     {
       "type": "stretch",
@@ -167,11 +167,17 @@ Return your response in this exact JSON format:
         "Added context for emerging skills",
         "Comprehensive keyword alignment"
       ],
-      "content": "# Full CV content here..."
+      "content": "Full CV content here in markdown format"
     }
   ]
 }
 \`\`\`
+
+CRITICAL JSON FORMATTING:
+- Escape all quotes in the content field using backslash (\\")
+- Do not include newlines in JSON strings, use \\n instead
+- Ensure valid JSON syntax throughout
+- The content field should be a single string with \\n for line breaks
 
 IMPORTANT:
 - Never invent experience or projects
@@ -202,11 +208,27 @@ IMPORTANT:
       // Remove any leading/trailing whitespace
       jsonStr = jsonStr.trim();
       
-      // Parse JSON
-      const result = JSON.parse(jsonStr);
-      return result;
+      // Try to parse JSON, if it fails, try to fix common issues
+      try {
+        const result = JSON.parse(jsonStr);
+        return result;
+      } catch (parseError) {
+        console.error('Initial JSON parse failed, attempting to fix...', parseError);
+        
+        // Try to find the JSON object in the response
+        const jsonObjMatch = jsonStr.match(/\{[\s\S]*\}/);
+        if (jsonObjMatch) {
+          const result = JSON.parse(jsonObjMatch[0]);
+          return result;
+        }
+        
+        throw new Error('Failed to parse AI response. Please try again or check the AI service logs.');
+      }
     } catch (error) {
       console.error('CV optimization error:', error);
+      if (error instanceof Error && error.message.includes('JSON')) {
+        throw new Error('Failed to parse AI response. The AI may have returned invalid JSON. Please try again.');
+      }
       throw new Error(error instanceof Error ? error.message : 'Failed to optimize CV');
     }
   }

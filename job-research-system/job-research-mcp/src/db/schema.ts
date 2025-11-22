@@ -17,6 +17,8 @@ export interface Job {
   location: string;
   remote: boolean;
   alignment_score: number | null;
+  strong_matches: string | null;
+  gaps: string | null;
   status: 'new' | 'reviewed' | 'applied' | 'rejected' | 'interview' | 'archived';
   priority: 'high' | 'medium' | 'low';
   notes: string | null;
@@ -50,17 +52,19 @@ export class JobDatabase {
         company TEXT NOT NULL,
         title TEXT NOT NULL,
         url TEXT NOT NULL,
-        description TEXT NOT NULL,
+        description TEXT,
         requirements TEXT,
         tech_stack TEXT,
         location TEXT,
-        remote BOOLEAN DEFAULT 0,
+        remote INTEGER DEFAULT 0,
         alignment_score REAL,
+        strong_matches TEXT,
+        gaps TEXT,
         status TEXT DEFAULT 'new',
         priority TEXT DEFAULT 'medium',
         notes TEXT,
-        found_date TEXT DEFAULT CURRENT_TIMESTAMP,
-        last_updated TEXT DEFAULT CURRENT_TIMESTAMP
+        found_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
@@ -185,10 +189,18 @@ export class JobDatabase {
     stmt.run(status, notes, jobId);
   }
 
-  updateAlignmentScore(jobId: string, score: number): void {
+  updateAlignmentScore(jobId: string, score: number, strongMatches?: string[], gaps?: string[]): void {
+    const strongMatchesJson = strongMatches ? JSON.stringify(strongMatches) : null;
+    const gapsJson = gaps ? JSON.stringify(gaps) : null;
+    
     this.db
-      .prepare('UPDATE jobs SET alignment_score = ?, last_updated = CURRENT_TIMESTAMP WHERE job_id = ?')
-      .run(score, jobId);
+      .prepare(`UPDATE jobs 
+        SET alignment_score = ?, 
+            strong_matches = ?, 
+            gaps = ?, 
+            last_updated = CURRENT_TIMESTAMP 
+        WHERE job_id = ?`)
+      .run(score, strongMatchesJson, gapsJson, jobId);
   }
 
   // Company watch list operations
@@ -373,6 +385,9 @@ export class JobDatabase {
     skills?: string;
     experience?: string;
     education?: string;
+    preferred_industries?: string;
+    preferred_locations?: string;
+    preferred_job_types?: string;
   }): any {
     // Check if default profile exists (id = 1)
     const existing = this.db.prepare('SELECT id FROM user_profiles WHERE id = 1').get();
@@ -390,6 +405,9 @@ export class JobDatabase {
           skills = ?,
           experience = ?,
           education = ?,
+          preferred_industries = ?,
+          preferred_locations = ?,
+          preferred_job_types = ?,
           updated_at = CURRENT_TIMESTAMP
         WHERE id = 1
       `).run(
@@ -401,7 +419,10 @@ export class JobDatabase {
         data.years_of_experience || 0,
         data.skills || null,
         data.experience || null,
-        data.education || null
+        data.education || null,
+        data.preferred_industries || null,
+        data.preferred_locations || null,
+        data.preferred_job_types || null
       );
 
       return this.db.prepare('SELECT * FROM user_profiles WHERE id = 1').get();
@@ -410,8 +431,9 @@ export class JobDatabase {
       const result = this.db.prepare(`
         INSERT INTO user_profiles (
           linkedin_url, full_name, headline, summary, current_position,
-          years_of_experience, skills, experience, education
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          years_of_experience, skills, experience, education,
+          preferred_industries, preferred_locations, preferred_job_types
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         data.linkedin_url || null,
         data.full_name,
@@ -421,7 +443,10 @@ export class JobDatabase {
         data.years_of_experience || 0,
         data.skills || null,
         data.experience || null,
-        data.education || null
+        data.education || null,
+        data.preferred_industries || null,
+        data.preferred_locations || null,
+        data.preferred_job_types || null
       );
 
       return this.db.prepare('SELECT * FROM user_profiles WHERE id = ?').get(result.lastInsertRowid);
@@ -438,7 +463,8 @@ export class JobDatabase {
 
     const allowedFields = [
       'linkedin_url', 'full_name', 'headline', 'summary', 'current_position',
-      'years_of_experience', 'skills', 'experience', 'education'
+      'years_of_experience', 'skills', 'experience', 'education',
+      'preferred_industries', 'preferred_locations', 'preferred_job_types'
     ];
 
     for (const field of allowedFields) {

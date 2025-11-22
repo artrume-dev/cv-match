@@ -14,6 +14,8 @@ export interface Job {
   status: 'new' | 'reviewed' | 'applied' | 'rejected' | 'interview' | 'archived';
   priority?: 'high' | 'medium' | 'low';
   alignment_score?: number;
+  strong_matches?: string[];
+  gaps?: string[];
   notes?: string;
   last_updated?: string;
 }

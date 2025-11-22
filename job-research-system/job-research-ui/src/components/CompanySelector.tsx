@@ -59,8 +59,20 @@ export function CompanySelector() {
       }
 
       const data = await response.json();
-      setCompanies(data.companies || []);
-      setFilteredCompanies(data.companies || []);
+      // API now returns array of strings, need to convert to Company objects
+      const companyObjects = Array.isArray(data) 
+        ? data.map((name: string, index: number) => ({
+            id: index + 1,
+            company_name: name,
+            careers_url: '',
+            ats_type: 'Unknown',
+            is_active: true,
+            added_by_user: false
+          }))
+        : (data.companies || []);
+      
+      setCompanies(companyObjects);
+      setFilteredCompanies(companyObjects);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load companies');
       console.error('Error fetching companies:', err);

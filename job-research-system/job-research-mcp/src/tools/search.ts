@@ -39,6 +39,8 @@ export async function searchNewJobs(
         location: job.location,
         remote: job.remote,
         alignment_score: null,
+        strong_matches: null,
+        gaps: null,
         status: 'new',
         priority: 'medium',
         notes: null,

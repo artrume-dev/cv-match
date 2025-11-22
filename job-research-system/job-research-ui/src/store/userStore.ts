@@ -13,6 +13,9 @@ interface UserProfile {
   experience?: string;
   education?: string;
   raw_data?: string;
+  preferred_industries?: string; // JSON array of industries
+  preferred_locations?: string; // JSON array of locations
+  preferred_job_types?: string; // JSON array of job types
   created_at?: string;
   updated_at?: string;
 }

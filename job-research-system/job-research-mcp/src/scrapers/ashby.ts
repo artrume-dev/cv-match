@@ -33,9 +33,10 @@ export class AshbyScraper extends BaseScraper {
                      $job.find('.job-title').text().trim() ||
                      $job.find('h3').first().text().trim();
         
-        if (!title || !this.isRelevantRole(title)) {
+        if (!title) {
           return;
         }
+        // Scrape all jobs - let user preferences and CV alignment do the filtering
 
         const jobId = $job.attr('data-job-id') || '';
         const jobUrl = `https://jobs.ashbyhq.com/${this.ashbyId}/${jobId}`;
@@ -65,9 +66,10 @@ export class AshbyScraper extends BaseScraper {
           const $link = $(element);
           const title = $link.text().trim();
           
-          if (!title || !this.isRelevantRole(title)) {
+          if (!title) {
             return;
           }
+          // Scrape all jobs - let user preferences and CV alignment do the filtering
 
           const href = $link.attr('href') || '';
           const jobUrl = href.startsWith('http') ? href : `https://jobs.ashbyhq.com${href}`;
@@ -91,19 +93,6 @@ export class AshbyScraper extends BaseScraper {
       console.error(`Error scraping ${this.company}:`, error);
       return [];
     }
-  }
-
-  private isRelevantRole(title: string): boolean {
-    const relevantKeywords = [
-      'design system', 'developer experience', 'dx', 'design engineer',
-      'product design', 'frontend', 'full stack', 'software engineer',
-      'ai', 'machine learning', 'ml', 'nlp', 'data scientist',
-      'product manager', 'technical writer', 'devops', 'platform',
-      'infrastructure', 'backend', 'engineer'
-    ];
-
-    const titleLower = title.toLowerCase();
-    return relevantKeywords.some(keyword => titleLower.includes(keyword));
   }
 
   private extractRequirements(text: string): string {
