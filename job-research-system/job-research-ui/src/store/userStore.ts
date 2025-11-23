@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { authService } from '../services/auth';
 
 interface UserProfile {
   id: number;
@@ -86,14 +87,34 @@ export const useUserStore = create<UserStore>()(
           activeCVId: state.activeCVId === id ? null : state.activeCVId,
         })),
 
-      setActiveCV: (id) =>
+      setActiveCV: async (id) => {
+        // Update local state immediately for responsive UI
         set((state) => ({
           activeCVId: id,
           cvDocuments: state.cvDocuments.map((doc) => ({
             ...doc,
             is_active: doc.id === id,
           })),
-        })),
+        }));
+
+        // Persist to backend
+        try {
+          const token = authService.getAccessToken();
+          const response = await fetch(`http://localhost:3001/api/cv/${id}/activate`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token && { 'Authorization': `Bearer ${token}` }),
+            },
+          });
+
+          if (!response.ok) {
+            console.error('Failed to activate CV on backend');
+          }
+        } catch (error) {
+          console.error('Error activating CV:', error);
+        }
+      },
 
       updateCVContent: (cvId, content) =>
         set((state) => ({
