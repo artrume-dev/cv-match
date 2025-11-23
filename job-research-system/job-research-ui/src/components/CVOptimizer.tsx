@@ -78,6 +78,28 @@ export function CVOptimizer({ job, onClose }: CVOptimizerProps) {
       return;
     }
 
+    // Safety check: Warn if alignment score is too low
+    const alignmentScore = job.alignment_score ?? 0;
+    if (alignmentScore < 50) {
+      const warningMessage = alignmentScore < 30
+        ? `⚠️ CRITICAL WARNING: This job has a very low match score (${alignmentScore}%).\n\n` +
+          `This indicates a fundamental domain mismatch between your experience and the job requirements. ` +
+          `Optimizing your CV for this role is likely to result in fabricated content, which will be automatically rejected.\n\n` +
+          `❌ We strongly recommend NOT applying to this job.\n` +
+          `✅ Instead, focus on jobs with 50%+ alignment that match your actual background.\n\n` +
+          `Do you still want to proceed?`
+        : `⚠️ WARNING: This job has a low match score (${alignmentScore}%).\n\n` +
+          `This job has significant gaps from your actual experience. The CV optimizer may struggle to create a ` +
+          `truthful optimized version without fabricating content.\n\n` +
+          `Consider focusing on jobs with better alignment (50%+).\n\n` +
+          `Do you want to proceed anyway?`;
+
+      const proceed = window.confirm(warningMessage);
+      if (!proceed) {
+        return;
+      }
+    }
+
     setIsOptimizing(true);
     setError(null);
     setSuccess(null);

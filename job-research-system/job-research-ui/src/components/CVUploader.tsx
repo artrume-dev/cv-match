@@ -29,7 +29,7 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 export function CVUploader() {
   const { isCVUploaderOpen, closeCVUploader, showAnalyzeJobsAlert } = useUIStore();
   const { addCVDocument, setActiveCV, cvDocuments } = useUserStore();
-  const { filteredJobs, jobs: allJobs } = useJobStore();
+  const { filteredJobs, jobs: allJobs, loadJobs } = useJobStore();
 
   const [view, setView] = useState<'select' | 'upload'>('select');
   const [uploadState, setUploadState] = useState<'idle' | 'uploading' | 'parsing' | 'success' | 'error'>('idle');
@@ -64,20 +64,25 @@ export function CVUploader() {
     try {
       // Set the selected CV as active
       setActiveCV(cvId);
-      
-      // Trigger re-analysis with this CV
-      const response = await fetch('http://localhost:3001/api/jobs/analyze-all', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cv_id: cvId }),
-      });
 
-      if (response.ok) {
-        console.log(`✅ Switched to CV ${cvId} and triggered re-analysis`);
-      }
-      
+      // Close modal
       closeCVUploader();
       resetState();
+
+      // Show analyze jobs alert
+      const filteredCount = filteredJobs().length;
+      const totalCount = allJobs.length;
+
+      showAnalyzeJobsAlert({
+        filteredJobsCount: filteredCount,
+        totalJobsCount: totalCount,
+        onAnalyzeFiltered: async () => {
+          await analyzeJobs(cvId, filteredCount);
+        },
+        onAnalyzeAll: async () => {
+          await analyzeJobs(cvId, totalCount);
+        },
+      });
     } catch (error) {
       console.error('Failed to switch CV:', error);
       setError('Failed to switch CV. Please try again.');
@@ -228,6 +233,9 @@ export function CVUploader() {
       if (analyzeResponse.ok) {
         const analyzeData = await analyzeResponse.json();
         console.log(`✅ Successfully analyzed ${analyzeData.analyzed_count} jobs!`);
+
+        // Reload jobs to get updated scores
+        await loadJobs();
       } else {
         console.error('Job analysis request failed');
       }

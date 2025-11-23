@@ -19,8 +19,14 @@ export function ScoreBreakdownDialog({ job, open, onOpenChange }: ScoreBreakdown
   if (!job) return null;
 
   const matchScore = job.alignment_score ?? 0;
-  const strongMatches = job.strong_matches || [];
-  const gaps = job.gaps || [];
+
+  // Parse strong_matches and gaps if they're JSON strings
+  const strongMatches = typeof job.strong_matches === 'string'
+    ? JSON.parse(job.strong_matches)
+    : (job.strong_matches || []);
+  const gaps = typeof job.gaps === 'string'
+    ? JSON.parse(job.gaps)
+    : (job.gaps || []);
 
   // Determine score color and recommendation
   const getScoreInfo = (score: number) => {

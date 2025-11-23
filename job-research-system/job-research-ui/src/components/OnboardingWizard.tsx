@@ -8,7 +8,7 @@ import { Label } from './ui/label';
 import { Checkbox } from './ui/checkbox';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
-import { ArrowRight, ArrowLeft, Check, Briefcase, MapPin, Clock, User, Upload, Building2, CheckCircle2, Linkedin, RefreshCw } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Check, Briefcase, MapPin, Clock, User, Upload, Building2, CheckCircle2, Linkedin, RefreshCw, X } from 'lucide-react';
 
 const INDUSTRIES = [
   'AI/ML',
@@ -292,7 +292,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
 
   return (
     <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+      <Card className="w-full max-w-3xl max-h-[90vh] overflow-y-auto relative">
         {/* Loading State - AI Fetching Jobs */}
         {isSearchingJobs ? (
           <>
@@ -323,7 +323,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
 
                 {/* Animated Loading Icons */}
                 <div className="flex items-center justify-center gap-3 py-8">
-                  <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                  <div className="w-3 h-3 bg-black rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
                   <div className="w-3 h-3 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
                   <div className="w-3 h-3 bg-pink-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
                 </div>
@@ -367,6 +367,13 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
         ) : (
           <>
             <CardHeader>
+              <button
+                onClick={onComplete}
+                className="absolute top-4 right-4 text-gray-400 hover:text-black transition-colors p-1.5 rounded hover:bg-gray-100 z-10"
+                aria-label="Close onboarding"
+              >
+                <X className="h-5 w-5" />
+              </button>
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <CardTitle className="text-2xl">Welcome to AI Job Research System</CardTitle>
@@ -800,12 +807,12 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
             </Button>
 
             {step < totalSteps ? (
-              <Button onClick={handleNext} disabled={!canProceed()}>
+              <Button onClick={handleNext} disabled={!canProceed()} className="bg-black hover:bg-gray-800 text-white">
                 Next
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             ) : (
-              <Button onClick={handleComplete} disabled={!canProceed()}>
+              <Button onClick={handleComplete} disabled={!canProceed()} className="bg-black hover:bg-gray-800 text-white">
                 <Check className="h-4 w-4 mr-2" />
                 Complete Setup
               </Button>

@@ -20,7 +20,8 @@ export function analyzeJobFit(
   db: JobDatabase,
   jobId: string,
   cvPath?: string,
-  cvId?: number
+  cvId?: number,
+  preferredIndustries?: string[]
 ): AlignmentResult {
   const job = db.getJobById(jobId);
 
@@ -63,12 +64,162 @@ export function analyzeJobFit(
   }
 
   // Calculate alignment based on keywords and requirements
-  const result = calculateAlignment(job, cvContent);
+  const result = calculateAlignment(job, cvContent, preferredIndustries);
 
   // Update alignment score in database with strong matches and gaps
   db.updateAlignmentScore(jobId, result.alignment_score, result.strong_matches, result.gaps);
 
   return result;
+}
+
+/**
+ * Detects the domain/industry of a job based on its title and description
+ */
+function detectJobDomain(jobTitle: string, jobText: string): string[] {
+  const titleLower = jobTitle.toLowerCase();
+  const textLower = jobText.toLowerCase();
+  const domains: string[] = [];
+
+  const domainPatterns = {
+    'Design Systems': [
+      'design system', 'design systems', 'component library', 'ui kit',
+      'design engineer', 'design infrastructure', 'design platform',
+      'design tokens', 'design tooling'
+    ],
+    'Product Design': [
+      'product designer', 'ux designer', 'ui designer', 'user experience',
+      'interaction design', 'visual design', 'product design'
+    ],
+    'Frontend Engineering': [
+      'frontend engineer', 'front-end engineer', 'ui engineer',
+      'frontend developer', 'front end developer', 'web developer'
+    ],
+    'Backend Engineering': [
+      'backend engineer', 'back-end engineer', 'backend developer',
+      'server engineer', 'api engineer', 'platform engineer'
+    ],
+    'Software Engineering': [
+      'software engineer', 'software developer', 'full stack',
+      'full-stack engineer', 'engineer'
+    ],
+    'Data Science': [
+      'data scientist', 'data analyst', 'machine learning engineer',
+      'ml engineer', 'ai engineer', 'research scientist'
+    ],
+    'Infrastructure': [
+      'infrastructure engineer', 'devops', 'site reliability',
+      'sre', 'cloud engineer', 'platform infrastructure', 'compute'
+    ],
+    'Product Management': [
+      'product manager', 'product lead', 'technical product manager',
+      'tpm', 'product owner'
+    ],
+    'AI/ML': [
+      'artificial intelligence', 'machine learning', 'deep learning',
+      'ai research', 'ml research', 'llm', 'large language model'
+    ],
+    'Mobile': [
+      'ios', 'android', 'mobile engineer', 'mobile developer',
+      'react native', 'flutter'
+    ]
+  };
+
+  // Check job title first (higher confidence)
+  for (const [domain, patterns] of Object.entries(domainPatterns)) {
+    if (patterns.some(pattern => titleLower.includes(pattern))) {
+      domains.push(domain);
+    }
+  }
+
+  // If no domain detected from title, check full text
+  if (domains.length === 0) {
+    for (const [domain, patterns] of Object.entries(domainPatterns)) {
+      const matchCount = patterns.filter(pattern => textLower.includes(pattern)).length;
+      // Need at least 2 keyword matches to infer domain from text
+      if (matchCount >= 2) {
+        domains.push(domain);
+      }
+    }
+  }
+
+  return domains;
+}
+
+/**
+ * Checks if job domain matches user's preferred industries
+ * Returns adjustment to apply to the alignment score
+ */
+function calculateDomainAlignment(
+  jobDomains: string[],
+  preferredIndustries?: string[]
+): {
+  adjustment: number;
+  reasoning: string;
+  isMatch: boolean;
+} {
+  if (!preferredIndustries || preferredIndustries.length === 0) {
+    // No preferences set, don't adjust
+    return { adjustment: 0, reasoning: '', isMatch: true };
+  }
+
+  if (jobDomains.length === 0) {
+    // Can't detect job domain, slight penalty for uncertainty
+    return {
+      adjustment: -5,
+      reasoning: 'Job domain unclear',
+      isMatch: false
+    };
+  }
+
+  // Check for direct match
+  const hasMatch = jobDomains.some(domain =>
+    preferredIndustries.some(pref =>
+      domain.toLowerCase().includes(pref.toLowerCase()) ||
+      pref.toLowerCase().includes(domain.toLowerCase())
+    )
+  );
+
+  if (hasMatch) {
+    // Direct domain match - boost score
+    return {
+      adjustment: 25,
+      reasoning: `Strong domain match: ${jobDomains.join(', ')}`,
+      isMatch: true
+    };
+  }
+
+  // Check for related domains (e.g., Design Systems vs Product Design)
+  const relatedDomains: { [key: string]: string[] } = {
+    'Design Systems': ['Product Design', 'Frontend Engineering', 'UI/UX'],
+    'Product Design': ['Design Systems', 'UI/UX'],
+    'Frontend Engineering': ['Design Systems', 'Software Engineering'],
+    'Backend Engineering': ['Software Engineering', 'Infrastructure'],
+    'AI/ML': ['Data Science', 'Software Engineering'],
+    'Data Science': ['AI/ML', 'Backend Engineering']
+  };
+
+  const hasRelatedMatch = preferredIndustries.some(pref => {
+    const related = relatedDomains[pref] || [];
+    return jobDomains.some(domain =>
+      related.some(r => domain.toLowerCase().includes(r.toLowerCase()))
+    );
+  });
+
+  if (hasRelatedMatch) {
+    // Related domain - small boost
+    return {
+      adjustment: 10,
+      reasoning: `Related domain: ${jobDomains.join(', ')}`,
+      isMatch: true
+    };
+  }
+
+  // No match - significant penalty
+  return {
+    adjustment: -40,
+    reasoning: `Domain mismatch: Job is ${jobDomains.join(', ')}, but you prefer ${preferredIndustries.join(', ')}`,
+    isMatch: false
+  };
 }
 
 /**
@@ -155,10 +306,42 @@ function detectDomainMismatch(jobText: string, cv: string): {
         'cfa required', 'securities trading', 'm&a advisory', 'capital markets desk'
       ],
       cvKeywords: [
-        'investment bank', 'financial analyst', 'portfolio manager', 'trader', 
+        'investment bank', 'financial analyst', 'portfolio manager', 'trader',
         'hedge fund', 'private equity', 'cfa', 'securities', 'investment management'
       ],
       domainName: 'finance/investment banking experience',
+      requiredCount: 2
+    },
+    recruiting: {
+      keywords: [
+        'recruiter', 'recruiting', 'recruitment', 'talent acquisition', 'technical recruiter',
+        'full-cycle recruiting', 'sourcing candidates', 'hiring manager', 'candidate pipeline',
+        'recruitment strategy', 'headhunter', 'talent sourcing', 'interview coordination',
+        'offer negotiation', 'recruiting experience', 'ats system', 'talent partner',
+        'recruiting operations', 'hire talent', 'build teams', 'recruiting background'
+      ],
+      cvKeywords: [
+        'recruiter', 'recruiting', 'recruitment', 'talent acquisition', 'hired',
+        'sourced candidates', 'talent partner', 'hr', 'human resources', 'headhunter',
+        'recruiting experience', 'recruiting background', 'recruiting operations'
+      ],
+      domainName: 'recruiting/talent acquisition experience',
+      requiredCount: 2
+    },
+    sales: {
+      keywords: [
+        'sales', 'account executive', 'business development', 'quota', 'sales quota',
+        'sales pipeline', 'crm', 'salesforce', 'territory', 'revenue target',
+        'account management', 'lead generation', 'closing deals', 'sales target',
+        'sales experience', 'sales background', 'sold', 'deal closing', 'sales cycle',
+        'outbound sales', 'inbound sales', 'sales strategy', 'sales operations'
+      ],
+      cvKeywords: [
+        'sales', 'sold', 'account executive', 'quota', 'revenue', 'sales pipeline',
+        'crm', 'business development', 'sales experience', 'sales background',
+        'account management', 'closing deals', 'sales operations'
+      ],
+      domainName: 'sales experience',
       requiredCount: 2
     }
   };
@@ -210,7 +393,7 @@ function detectDomainMismatch(jobText: string, cv: string): {
   };
 }
 
-function calculateAlignment(job: Job, cvContent: string): AlignmentResult {
+function calculateAlignment(job: Job, cvContent: string, preferredIndustries?: string[]): AlignmentResult {
   const strongMatches: string[] = [];
   const gaps: string[] = [];
   let score = 0;
@@ -221,12 +404,12 @@ function calculateAlignment(job: Job, cvContent: string): AlignmentResult {
   // Check if job has sufficient information for analysis
   const hasDescription = job.description && job.description.trim().length > 20;
   const hasRequirements = job.requirements && job.requirements.trim().length > 20;
-  
+
   if (!hasDescription && !hasRequirements) {
     // Job has insufficient data for accurate analysis
     gaps.push('Job posting lacks detailed description and requirements');
     gaps.push('Cannot perform accurate alignment analysis');
-    
+
     return {
       job_id: job.job_id,
       company: job.company,
@@ -253,6 +436,19 @@ function calculateAlignment(job: Job, cvContent: string): AlignmentResult {
       recommendation: 'low',
       reasoning: domainMismatches.reasoning,
     };
+  }
+
+  // NEW: Detect job domain from title and apply domain-based scoring adjustment
+  const jobDomains = detectJobDomain(job.title, jobText);
+  const domainAlignment = calculateDomainAlignment(jobDomains, preferredIndustries);
+
+  // Track domain match info
+  if (domainAlignment.reasoning) {
+    if (domainAlignment.isMatch) {
+      strongMatches.push(domainAlignment.reasoning);
+    } else {
+      gaps.push(domainAlignment.reasoning);
+    }
   }
 
   // Check for strong experience matches - Expanded keyword dictionary
@@ -469,23 +665,29 @@ function calculateAlignment(job: Job, cvContent: string): AlignmentResult {
     maxPossibleScore = 100; // Fallback for jobs without recognized keywords
   }
   
-  const alignmentScore = maxPossibleScore > 0 
+  let alignmentScore = maxPossibleScore > 0
     ? Math.min(Math.round((score / maxPossibleScore) * 100), 100)
     : 0;
 
-  // Determine recommendation
+  // Apply domain alignment adjustment
+  alignmentScore = Math.max(0, Math.min(100, alignmentScore + domainAlignment.adjustment));
+
+  // Determine recommendation with clearer thresholds
   let recommendation: 'high' | 'medium' | 'low';
   let reasoning: string;
 
   if (alignmentScore >= 70) {
     recommendation = 'high';
-    reasoning = `Strong alignment (${alignmentScore}%). Your experience closely matches requirements.`;
+    reasoning = `Strong alignment (${alignmentScore}%). Your experience closely matches requirements. This is a good fit!`;
   } else if (alignmentScore >= 50) {
     recommendation = 'medium';
-    reasoning = `Good alignment (${alignmentScore}%) with some gaps. Consider emphasizing transferable skills.`;
+    reasoning = `Moderate alignment (${alignmentScore}%) with some gaps. Consider emphasizing transferable skills in your application.`;
+  } else if (alignmentScore >= 30) {
+    recommendation = 'low';
+    reasoning = `Limited alignment (${alignmentScore}%). Significant gaps in key requirements. Application not recommended - focus on jobs with better match.`;
   } else {
     recommendation = 'low';
-    reasoning = `Limited alignment (${alignmentScore}%). Significant gaps in key requirements.`;
+    reasoning = `Very low alignment (${alignmentScore}%). Fundamental domain mismatch detected. DO NOT APPLY - this role requires experience you don't have. Optimizing CV for this role may lead to fabricated content.`;
   }
 
   return {
@@ -507,12 +709,13 @@ export function batchAnalyzeJobs(
   db: JobDatabase,
   jobIds: string[],
   cvPath?: string,
-  cvId?: number
+  cvId?: number,
+  preferredIndustries?: string[]
 ): AlignmentResult[] {
   return jobIds
     .map(id => {
       try {
-        return analyzeJobFit(db, id, cvPath, cvId);
+        return analyzeJobFit(db, id, cvPath, cvId, preferredIndustries);
       } catch (error) {
         console.error(`Error analyzing job ${id}:`, error);
         return null;

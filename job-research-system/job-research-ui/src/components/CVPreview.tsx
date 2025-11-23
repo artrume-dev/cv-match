@@ -19,7 +19,7 @@ import {
 
 export function CVPreview() {
   const { cvDocuments, activeCVId, updateCVContent, removeCVDocument } = useUserStore();
-  const { openCVUploader } = useUIStore();
+  const { openCVUploader, setRightPanelView } = useUIStore();
   const { selectedJob } = useJobStore();
   const [isEditing, setIsEditing] = useState(false);
   const [editedContent, setEditedContent] = useState('');
@@ -128,11 +128,11 @@ export function CVPreview() {
   return (
     <div className="h-full flex flex-col bg-white">
       {/* Header */}
-      <div className="border-b border-gray-200 bg-white px-6 py-4">
-        <div className="flex items-center justify-between mb-2">
+      <div className="border-b border-gray-200 bg-white px-6 py-3">
+        <div className="flex items-center justify-between mb-0">
           <div className="flex items-center gap-3 flex-1">
-            <div className="flex items-center justify-center w-8 h-8 rounded bg-blue-50">
-              <FileText className="h-5 w-5 text-blue-600" />
+            <div className="flex items-center justify-center w-8 h-8 rounded bg-gray-100">
+              <FileText className="h-5 w-5 text-black" />
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-base font-medium text-gray-900">
@@ -144,7 +144,7 @@ export function CVPreview() {
               <Button
                 variant="link"
                 size="sm"
-                className="h-auto p-0 text-xs text-blue-600 hover:text-blue-700"
+                className="h-auto p-0 text-xs text-black hover:text-gray-700 font-medium"
                 onClick={openCVUploader}
               >
                 Upload New CV
@@ -152,14 +152,10 @@ export function CVPreview() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {!isEditing && targetJob && (
-              <Button
-                size="sm"
-                className="gap-2 bg-gray-900 hover:bg-gray-800 text-white"
-                onClick={() => {}}
-              >
-                ✨ Optimize for {targetJob.company}
-              </Button>
+            {!isEditing && targetJob && targetJob.alignment_score && (
+              <Badge className="bg-green-50 text-green-800 text-xs px-3 border border-green-300 rounded-md font-semibold">
+                Match Score: {targetJob.alignment_score}%
+              </Badge>
             )}
             {!isEditing && (
               <>
@@ -216,16 +212,20 @@ export function CVPreview() {
       {/* CV Content */}
       <div className="flex-1 overflow-y-auto bg-gray-50">
         <div className="max-w-4xl mx-auto px-16 py-12">
-          {/* Target Role and Match Score Ribbon - Above CV page */}
+          {/* Target Role and Optimize Button Ribbon - Above CV page */}
           {targetJob && (
-            <div className="bg-gray-100 py-3 px-4 mb-0.5 flex items-center justify-between rounded-sm">
-              <span className="text-xs text-gray-600 font-normal uppercase tracking-wide">
-                TARGET: {targetJob.title.toUpperCase()}, {targetJob.company.toUpperCase()}
+            <div className="bg-gray-100 py-3 px-4 mb-0 flex items-center justify-between rounded-lg rounded-bl-none rounded-br-none shadow-sm border border-b-0 border-gray-200 mb-0.5">
+              <span className="text-xs text-gray-700 font-normal uppercase tracking-wide">
+                <span className="font-semibold">Job:</span> {targetJob.title.toUpperCase()}, {targetJob.company.toUpperCase()}
               </span>
-              {targetJob.alignment_score && (
-                <Badge className="bg-green-500 text-white hover:bg-green-500 text-sm px-3 py-1 rounded-md font-semibold">
-                  Match Score: {targetJob.alignment_score}%
-                </Badge>
+              {!isEditing && (
+                <Button
+                  size="sm"
+                  className="gap-2 bg-gray-900 hover:bg-gray-800 text-white h-7 text-xs"
+                  onClick={() => setRightPanelView('optimizer')}
+                >
+                  ✨ Optimize for {targetJob.company}
+                </Button>
               )}
             </div>
           )}
@@ -233,11 +233,11 @@ export function CVPreview() {
             <textarea
               value={editedContent}
               onChange={(e) => setEditedContent(e.target.value)}
-              className="w-full h-full min-h-[600px] p-4 font-mono text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary bg-white"
+              className="w-full h-full min-h-[600px] p-4 font-mono text-sm border rounded-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white"
               placeholder="Edit your CV content here..."
             />
           ) : (
-            <div className="bg-white shadow-sm border border-gray-200 rounded-lg p-12">
+            <div className="bg-white shadow-sm border border-gray-200 rounded-none p-12">
               {/* Parse and render CV content with proper styling */}
               <div className="cv-content">
                 <style>{`

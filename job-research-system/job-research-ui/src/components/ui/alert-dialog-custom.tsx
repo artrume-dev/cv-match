@@ -96,29 +96,31 @@ export function AnalyzeJobsAlert({
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
+      <AlertDialogContent className="sm:max-w-[500px]">
         <AlertDialogHeader>
           <AlertDialogTitle>Analyze Jobs with New CV?</AlertDialogTitle>
           <AlertDialogDescription>
             Your CV has been uploaded successfully. Would you like to analyze jobs now?
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-          <AlertDialogCancel onClick={() => onOpenChange(false)}>
+        <AlertDialogFooter className="flex flex-col gap-2 sm:flex-col">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <AlertDialogAction
+              onClick={handleAnalyzeFiltered}
+              className="bg-black hover:bg-gray-800 text-white flex-1"
+            >
+              Analyze {filteredJobsCount} Matching Jobs
+            </AlertDialogAction>
+            <AlertDialogAction
+              onClick={handleAnalyzeAll}
+              className="bg-black hover:bg-gray-800 text-white flex-1"
+            >
+              Analyze All {totalJobsCount} Jobs
+            </AlertDialogAction>
+          </div>
+          <AlertDialogCancel onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
             Skip for now
           </AlertDialogCancel>
-          <AlertDialogAction 
-            onClick={handleAnalyzeFiltered}
-            className="bg-blue-600 hover:bg-blue-700"
-          >
-            Analyze {filteredJobsCount} Matching Jobs
-          </AlertDialogAction>
-          <AlertDialogAction 
-            onClick={handleAnalyzeAll}
-            className="bg-green-600 hover:bg-green-700"
-          >
-            Analyze All {totalJobsCount} Jobs
-          </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

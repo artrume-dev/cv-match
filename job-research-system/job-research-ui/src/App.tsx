@@ -14,7 +14,7 @@ import { OnboardingWizard } from './components/OnboardingWizard';
 import { CustomAlert, AnalyzeJobsAlert } from './components/ui/alert-dialog-custom';
 // import { ChatInterface } from './components/ChatInterface'; // TODO: Re-enable after LLM integration
 import { Button } from './components/ui/button';
-import { Briefcase, Search, Bell, Plus, Command } from 'lucide-react';
+import { Briefcase, Search, Bell, Plus } from 'lucide-react';
 
 function App() {
   const { isOnboarded, profile, setOnboarded, setCVDocuments, setActiveCVId } = useUserStore();
@@ -151,20 +151,20 @@ function App() {
       )}
 
       {/* Header */}
-      <header className="bg-header text-header-foreground shrink-0 border-b border-gray-800">
+      <header className="bg-white shrink-0 border-b border-gray-200">
         <div className="mx-auto px-6 py-3">
           <div className="flex items-center justify-between">
             {/* Logo and Navigation */}
             <div className="flex items-center gap-8">
               <div className="flex items-center gap-2">
-                <Briefcase className="h-5 w-5" />
-                <span className="text-lg font-semibold">TalentNode</span>
+                <Briefcase className="h-5 w-5 text-black" />
+                <span className="text-lg font-semibold text-black">TalentNode</span>
               </div>
 
               <nav className="flex items-center gap-6 text-sm">
-                <button className="hover:text-gray-300 transition-colors">Research</button>
-                <button className="hover:text-gray-300 transition-colors">Applications</button>
-                <button className="hover:text-gray-300 transition-colors">Resume Base</button>
+                <button className="text-gray-700 hover:text-black transition-colors">Research</button>
+                <button className="text-gray-700 hover:text-black transition-colors">Applications</button>
+                <button className="text-gray-700 hover:text-black transition-colors">Resume Base</button>
               </nav>
             </div>
 
@@ -175,18 +175,17 @@ function App() {
                 <input
                   type="text"
                   placeholder="Search jobs, skills, or companies..."
-                  className="bg-gray-900 text-white pl-10 pr-12 py-1.5 rounded-md text-sm w-80 focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="bg-gray-50 text-gray-900 pl-10 pr-12 py-2 rounded-md text-sm w-96 focus:outline-none focus:ring-2 focus:ring-gray-300 border border-gray-200"
                 />
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-gray-500 text-xs">
-                  <Command className="h-3 w-3" />
-                  <span>K</span>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-0.5 text-gray-400 text-xs font-medium">
+                  <span>⌘K</span>
                 </div>
               </div>
 
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-header-foreground hover:text-gray-300 hover:bg-gray-900"
+                className="text-gray-700 hover:text-black hover:bg-gray-100"
                 onClick={() => {}}
               >
                 <Bell className="h-5 w-5" />
@@ -195,7 +194,7 @@ function App() {
               <Button
                 variant="default"
                 size="sm"
-                className="gap-2 bg-white text-black hover:bg-gray-100"
+                className="gap-2 bg-black text-white hover:bg-gray-800"
                 onClick={() => {
                   setOnboarded(false);
                   setShowOnboarding(true);
@@ -205,8 +204,8 @@ function App() {
                 New Project
               </Button>
 
-              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-white font-semibold text-sm">
-                SM
+              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white font-semibold text-sm">
+                SN
               </div>
             </div>
           </div>

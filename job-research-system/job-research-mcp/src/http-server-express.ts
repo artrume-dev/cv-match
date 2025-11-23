@@ -462,8 +462,17 @@ app.post('/api/tools/get_job_details', (req, res) => {
 
 app.post('/api/tools/analyze_job_fit', (req, res) => {
   try {
-    const { job_id, cv_path, cv_id } = req.body;
-    const result = analyzeJobFit(db, job_id, cv_path, cv_id);
+    const { job_id, cv_path, cv_id, preferred_industries } = req.body;
+
+    // Parse preferred_industries if it's a JSON string
+    let industries: string[] | undefined;
+    if (preferred_industries) {
+      industries = typeof preferred_industries === 'string'
+        ? JSON.parse(preferred_industries)
+        : preferred_industries;
+    }
+
+    const result = analyzeJobFit(db, job_id, cv_path, cv_id, industries);
     res.json(result);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -472,8 +481,17 @@ app.post('/api/tools/analyze_job_fit', (req, res) => {
 
 app.post('/api/tools/batch_analyze_jobs', (req, res) => {
   try {
-    const { job_ids, cv_path, cv_id } = req.body;
-    const result = batchAnalyzeJobs(db, job_ids, cv_path, cv_id);
+    const { job_ids, cv_path, cv_id, preferred_industries } = req.body;
+
+    // Parse preferred_industries if it's a JSON string
+    let industries: string[] | undefined;
+    if (preferred_industries) {
+      industries = typeof preferred_industries === 'string'
+        ? JSON.parse(preferred_industries)
+        : preferred_industries;
+    }
+
+    const result = batchAnalyzeJobs(db, job_ids, cv_path, cv_id, industries);
     res.json(result);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -485,13 +503,26 @@ app.post('/api/jobs/analyze-all', (req, res) => {
   try {
     const { cv_path, cv_id } = req.body;
 
+    // Get user profile to fetch preferred industries
+    let industries: string[] | undefined;
+    try {
+      const profile = db.getUserProfile();
+      if (profile && profile.preferred_industries) {
+        industries = typeof profile.preferred_industries === 'string'
+          ? JSON.parse(profile.preferred_industries)
+          : profile.preferred_industries;
+      }
+    } catch (error) {
+      console.warn('Could not fetch user profile preferences:', error);
+    }
+
     // Get all jobs
     const jobs = getJobs(db);
     // Use job_id (string) not id (number) - analyzeJobFit expects job_id
     const jobIds = jobs.map((job: any) => job.job_id);
 
-    // Batch analyze all jobs
-    const result = batchAnalyzeJobs(db, jobIds, cv_path, cv_id);
+    // Batch analyze all jobs with user preferences
+    const result = batchAnalyzeJobs(db, jobIds, cv_path, cv_id, industries);
 
     res.json({
       success: true,

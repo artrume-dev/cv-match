@@ -4,10 +4,11 @@ import { useUIStore } from '../store/uiStore';
 import { useUserStore } from '../store/userStore';
 import { JobCard } from './JobCard';
 import { JobPagination } from './JobPagination';
+import { FilterModal } from './FilterModal';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Badge } from './ui/badge';
-import { Briefcase, X, Search, AlertCircle, Filter as FilterIcon, RefreshCw } from 'lucide-react';
+import { Briefcase, X, Search, AlertCircle, Filter as FilterIcon, RefreshCw, SlidersHorizontal } from 'lucide-react';
 import type { Job } from '../types';
 
 interface JobsListProps {
@@ -28,11 +29,13 @@ export function JobsList({ onCompanySelectorOpen }: JobsListProps) {
     usePreferences,
     searchQuery,
     selectedJobId,
-    loadJobs
+    loadJobs,
+    isLoading
   } = useJobStore();
   const { setRightPanelView, openEditProfile, showAlert } = useUIStore();
   const { profile, activeCVId, updateProfile } = useUserStore();
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 
   const jobs = paginatedJobs();
   const allFilteredJobs = filteredJobs();
@@ -214,6 +217,19 @@ export function JobsList({ onCompanySelectorOpen }: JobsListProps) {
     console.log('✅ Right panel view set to optimizer');
   };
 
+  const handleApplyFilters = (filters: { locations: string[]; jobTypes: string[] }) => {
+    console.log('🔍 Applying filters:', filters);
+
+    // Update user profile with new filter preferences
+    updateProfile({
+      preferred_locations: JSON.stringify(filters.locations),
+      preferred_job_types: JSON.stringify(filters.jobTypes),
+    });
+
+    // Enable preference-based filtering
+    setUsePreferences(true);
+  };
+
   return (
     <div className="h-full flex flex-col bg-white">
       {/* Ribbon Alert for Filtered Jobs */}
@@ -229,7 +245,7 @@ export function JobsList({ onCompanySelectorOpen }: JobsListProps) {
             </span>
             <button
               onClick={openEditProfile}
-              className="text-blue-600 underline hover:text-blue-800 font-medium"
+              className="text-blue-800 underline hover:text-gray-700 font-medium"
             >
               Update preferences
             </button>
@@ -246,10 +262,10 @@ export function JobsList({ onCompanySelectorOpen }: JobsListProps) {
       )}
 
       {/* Header */}
-      <div className="border-b border-gray-200 bg-white p-5">
+      <div className="border-b border-gray-200 bg-gray-50/90 px-5 py-2">
         <div className="mb-4">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-semibold text-gray-900">Opportunities</h2>
+            <h2 className="text-sm font-bold text-gray-900">Opportunities</h2>
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
@@ -261,7 +277,7 @@ export function JobsList({ onCompanySelectorOpen }: JobsListProps) {
                 <RefreshCw className={`h-3 w-3 ${isAnalyzing ? 'animate-spin' : ''}`} />
                 {isAnalyzing ? 'Analyzing...' : 'Analyze All Jobs'}
               </Button>
-              <span className="text-sm font-medium text-gray-600 bg-gray-100 px-2.5 py-1 rounded-md">
+              <span className="text-xs font-normal text-gray-600 bg-gray-100 px-2.5 py-1 rounded-md">
                 {allFilteredJobs.length} found
               </span>
             </div>
@@ -280,43 +296,48 @@ export function JobsList({ onCompanySelectorOpen }: JobsListProps) {
           </div>
 
           {/* Active Filter Tags */}
-          {activeFilters.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs text-gray-500">Filters</span>
-                <button
-                  type="button"
-                  className="h-6 px-2 text-xs hover:bg-gray-100 rounded transition-colors"
+          <div className="mt-3 flex flex-wrap gap-2 items-center">
+            {/* Filter Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsFilterModalOpen(true)}
+              className="h-8 px-3 gap-2 text-xs border-gray-300"
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5" />
+              Filters
+            </Button>
+
+            {/* Show only first 2 active filters */}
+            {activeFilters.slice(0, 2).map((filter, idx) => {
+              console.log('🎨 Rendering filter tag:', filter);
+              return (
+                <Badge
+                  key={`${filter.type}-${idx}`}
+                  variant="outline"
+                  className="bg-blue-50 text-blue-700 border-blue-200 px-3 py-1 text-xs flex items-center gap-2 cursor-pointer hover:bg-blue-100 transition-colors"
                   onClick={() => {
-                    console.log('🗑️ Clear all clicked');
-                    handleClearAllFilters();
+                    console.log('🗑️ Removing filter:', filter.type);
+                    handleRemoveFilter(filter.type);
                   }}
                 >
-                  Clear all
-                </button>
-              </div>
-              {activeFilters.map((filter, idx) => {
-                console.log('🎨 Rendering filter tag:', filter);
-                return (
-                  <button
-                    key={`${filter.type}-${idx}`}
-                    type="button"
-                    onClick={() => {
-                      console.log('🗑️ Removing filter:', filter.type);
-                      handleRemoveFilter(filter.type);
-                    }}
-                    onMouseDown={(e) => {
-                      console.log('🖱️ Mouse down on filter:', filter.type);
-                    }}
-                    className="flex items-center gap-1.5 bg-blue-100 text-blue-700 px-2.5 py-1 rounded-md text-xs hover:bg-blue-200 transition-colors cursor-pointer border border-blue-300"
-                  >
-                    <span>{filter.label}</span>
-                    <X className="h-3 w-3" />
-                  </button>
-                );
-              })}
-            </div>
-          )}
+                  <span>{filter.label}</span>
+                  <X className="h-3 w-3" />
+                </Badge>
+              );
+            })}
+
+            {/* Show "+X more" badge if there are more than 2 filters */}
+            {activeFilters.length > 2 && (
+              <Badge
+                variant="outline"
+                className="bg-blue-50 text-blue-700 border-blue-200 px-3 py-1 text-xs cursor-pointer hover:bg-blue-100"
+                onClick={() => setIsFilterModalOpen(true)}
+              >
+                +{activeFilters.length - 2} more
+              </Badge>
+            )}
+          </div>
         </div>
       </div>
 
@@ -332,7 +353,7 @@ export function JobsList({ onCompanySelectorOpen }: JobsListProps) {
 
             {hasActiveFilters && allJobs.length > 0 ? (
               <>
-                <p className="text-sm text-gray-600 mb-4 max-w-md">
+                <p className="text-xs text-gray-600 mb-4 max-w-md">
                   No jobs match your current filters and preferences. {allJobs.length} total jobs available.
                 </p>
                 <div className="flex gap-2">
@@ -367,8 +388,17 @@ export function JobsList({ onCompanySelectorOpen }: JobsListProps) {
           </div>
         )}
 
+        {/* Loading Indicator */}
+        {isLoading && (
+          <div className="flex flex-col items-center justify-center py-20">
+            <RefreshCw className="h-12 w-12 text-black animate-spin mb-4" />
+            <p className="text-gray-600 font-medium">Analyzing jobs with domain-aware scoring...</p>
+            <p className="text-gray-500 text-sm mt-2">This may take a moment</p>
+          </div>
+        )}
+
         {/* Jobs List */}
-        {allFilteredJobs.length > 0 && (
+        {!isLoading && allFilteredJobs.length > 0 && (
           <div className="divide-y divide-border">
             {jobs.map((job) => (
               <JobCard
@@ -384,7 +414,17 @@ export function JobsList({ onCompanySelectorOpen }: JobsListProps) {
       </div>
 
       {/* Pagination */}
-      {allFilteredJobs.length > 0 && <JobPagination />}
+      {!isLoading && allFilteredJobs.length > 0 && <JobPagination />}
+
+      {/* Filter Modal */}
+      <FilterModal
+        open={isFilterModalOpen}
+        onOpenChange={setIsFilterModalOpen}
+        activeFilters={activeFilters}
+        onRemoveFilter={handleRemoveFilter}
+        onClearAll={handleClearAllFilters}
+        onApplyFilters={handleApplyFilters}
+      />
     </div>
   );
 }

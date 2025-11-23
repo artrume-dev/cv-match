@@ -68,56 +68,71 @@ export function JobCard({ job, onOptimizeCV, isSelected = false, onSelect }: Job
         onOpenChange={setShowScoreDialog}
       />
       <div
-      className={`border-b border-gray-200 last:border-b-0 py-4 transition-all duration-200 cursor-pointer group relative ${
+      className={`border-b-0 border-gray-200 last:border-b-0 py-4 transition-all duration-200 cursor-pointer group relative ${
         isSelected
-          ? 'bg-blue-50 border-l-4 !border-l-blue-600 pl-3 pr-4'
+          ? 'bg-blue-50 border-l-4 !border-l-black pl-3 pr-4'
           : 'hover:bg-gray-50 border-l-4 border-l-transparent px-4'
       }`}
       onClick={handleClick}
     >
-      <div className="space-y-2">
-        {/* Job Title */}
-        <h3 className={`font-semibold text-base leading-tight ${
-          isSelected ? 'text-blue-600' : 'text-gray-900'
-        }`}>
-          {job.title}
-        </h3>
+      <div className="space-y-3">
+        {/* Job Title and View Job Button Row */}
+        <div className="flex items-start justify-between gap-3">
+          <h3 className={`font-bold text-sm leading-tight flex-1 ${
+            isSelected ? 'text-black font-semibold' : 'text-gray-900'
+          }`}>
+            {job.title}
+          </h3>
+          
+        </div>
 
         {/* Company and Location Row */}
-        <div className="flex items-center gap-2 text-xs font-normal text-gray-600">
+      <div className="pb-2">
+        <div className="flex items-center gap-2 text-xs font-normal text-gray-700">
           <div className="flex items-center gap-1.5">
             <Building2 className="h-4 w-4 text-gray-400" />
             <span>{job.company}</span>
           </div>
-          <span className="text-gray-300">•</span>
+         
           <div className="flex items-center gap-1.5">
             <MapPin className="h-4 w-4 text-gray-400" />
             <span>{location}</span>
-          </div>
-          <Badge variant="secondary" className="ml-1 bg-gray-100 text-gray-700 hover:bg-gray-100 text-xs px-2 py-0">
-            {workType}
-          </Badge>
+          </div>          
         </div>
-
-        {/* Employment Type and Match Score Row */}
+</div>
+        {/* Employment Type, Work Type, and Match Score Row */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-xs px-2.5 py-0.5 border-gray-300 text-gray-700 font-normal">
+            <Badge variant="outline" className="rounded-sm text-[10px] px-2.5 py-0.5 border-gray-300 text-gray-700 font-normal">
               {employmentType}
+            </Badge>
+            <Badge variant="outline" className="rounded-sm text-[10px] px-2.5 py-0.5 border-gray-300 text-gray-700 font-normal">
+              {workType}
             </Badge>
             {matchScore !== null ? (
               <div className="flex items-center gap-1.5">
-                <span className={`text-xs font-normal px-2.5 py-0.5 rounded-full border ${matchColorClasses}`}>
+                <span className={`rounded-sm text-[10px] font-medium px-2.5 py-0.5 rounded-full border ${matchColorClasses}`}>
                   {matchScore}% Match
                 </span>
                 <button
                   onClick={handleScoreInfoClick}
-                  className="text-gray-400 hover:text-blue-600 transition-colors p-0.5 rounded hover:bg-blue-50"
+                  className="text-gray-600 text-[10px] hover:text-black transition-colors p-0.5 rounded hover:bg-gray-100"
                   title="View match score breakdown"
                   aria-label="View match score details"
                 >
                   <Info className="h-4 w-4" />
                 </button>
+
+                         <Button
+            size="sm"
+            variant="ghost"
+            className="gap-1 text-xs h-6 shrink-0 font-normal text-gray-500"
+            onClick={handleViewJobClick}
+          >
+            <ExternalLink className="h-3 w-3" />
+            View Job
+          </Button>
+
               </div>
             ) : (
               <span className="text-xs text-gray-400 italic" title="Click 'Analyze All Jobs' to calculate match score">
@@ -126,19 +141,11 @@ export function JobCard({ job, onOptimizeCV, isSelected = false, onSelect }: Job
             )}
           </div>
         </div>
+    
 
-        {/* Action Buttons */}
-        <div className="flex items-center gap-2 mt-2">
-          <Button
-            size="sm"
-            variant="outline"
-            className="gap-1 text-xs h-7"
-            onClick={handleViewJobClick}
-          >
-            <ExternalLink className="h-3 w-3" />
-            View Job
-          </Button>
-          {/* {onOptimizeCV && (
+        {/* Action Buttons - Reserved for future features */}
+        {/* {onOptimizeCV && (
+          <div className="flex items-center gap-2 mt-2">
             <Button
               size="sm"
               className="gap-1 text-xs h-7"
@@ -147,8 +154,8 @@ export function JobCard({ job, onOptimizeCV, isSelected = false, onSelect }: Job
               <Sparkles className="h-3 w-3" />
               Optimize CV
             </Button>
-          )} */}
-        </div>
+          </div>
+        )} */}
       </div>
     </div>
     </>
