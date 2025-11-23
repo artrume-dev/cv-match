@@ -15,6 +15,9 @@ import { CVUploader } from './components/CVUploader';
 import { useUserStore } from './store/userStore';
 import { Dashboard } from './pages/Dashboard';
 import { DashboardOverview } from './pages/DashboardOverview';
+import { CVManagement } from './pages/CVManagement';
+import { OptimizationsView } from './pages/OptimizationsView';
+import { ApplicationsView } from './pages/ApplicationsView';
 
 function OnboardingPage() {
   const { setOnboarded } = useUserStore();
@@ -62,10 +65,9 @@ function App() {
             }
           >
             <Route index element={<DashboardOverview />} />
-            {/* Placeholder routes - will be implemented later */}
-            <Route path="cvs" element={<div className="p-6">CVs Page - Coming Soon</div>} />
-            <Route path="optimizations" element={<div className="p-6">Optimizations Page - Coming Soon</div>} />
-            <Route path="applications" element={<div className="p-6">Applications Page - Coming Soon</div>} />
+            <Route path="cvs" element={<CVManagement />} />
+            <Route path="optimizations" element={<OptimizationsView />} />
+            <Route path="applications" element={<ApplicationsView />} />
             <Route path="analytics" element={<div className="p-6">Analytics Page - Coming Soon</div>} />
           </Route>
 
