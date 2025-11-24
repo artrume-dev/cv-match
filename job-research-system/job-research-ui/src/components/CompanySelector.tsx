@@ -56,17 +56,8 @@ export function CompanySelector() {
       const response = await api.get('/companies');
       const data = response.data;
 
-      // API now returns array of strings, need to convert to Company objects
-      const companyObjects = Array.isArray(data)
-        ? data.map((name: string, index: number) => ({
-            id: index + 1,
-            company_name: name,
-            careers_url: '',
-            ats_type: 'Unknown',
-            is_active: true,
-            added_by_user: false
-          }))
-        : (data.companies || []);
+      // API returns array of company objects with full details
+      const companyObjects = Array.isArray(data) ? data : [];
 
       setCompanies(companyObjects);
       setFilteredCompanies(companyObjects);

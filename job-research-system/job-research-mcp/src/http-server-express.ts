@@ -98,9 +98,8 @@ app.use('/api', createApplicationsRoutes(db));
 app.get('/api/companies', authenticateUser, (req, res) => {
   try {
     const companies = db.getAllCompanies(req.user!.userId);
-    // Return array of company names for the UI
-    const companyNames = companies.map((c: any) => c.company_name);
-    res.json(companyNames);
+    // Return full company objects with IDs
+    res.json(companies);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

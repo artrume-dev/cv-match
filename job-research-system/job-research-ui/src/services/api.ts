@@ -5,7 +5,7 @@
  * error handling, and request/response transformations.
  */
 
-import axios, { AxiosError, AxiosResponse } from 'axios';
+import axios from 'axios';
 import { authService } from './auth';
 
 // API Configuration
@@ -50,7 +50,7 @@ apiClient.interceptors.request.use(
 // ============================================================================
 
 apiClient.interceptors.response.use(
-  (response: AxiosResponse) => {
+  (response) => {
     // Log successful responses in development
     if (import.meta.env.DEV) {
       console.log(`🟢 ${response.config.method?.toUpperCase()} ${response.config.url}`, response.data);
@@ -58,7 +58,7 @@ apiClient.interceptors.response.use(
 
     return response;
   },
-  async (error: AxiosError) => {
+  async (error) => {
     const originalRequest: any = error.config;
 
     // Handle 401 Unauthorized - Token expired
@@ -98,36 +98,36 @@ apiClient.interceptors.response.use(
 /**
  * Type-safe GET request
  */
-export const get = <T = any>(url: string, params?: any): Promise<AxiosResponse<T>> => {
-  return apiClient.get<T>(url, { params });
+export const get = (url: string, params?: any) => {
+  return apiClient.get(url, { params });
 };
 
 /**
  * Type-safe POST request
  */
-export const post = <T = any>(url: string, data?: any, config?: any): Promise<AxiosResponse<T>> => {
-  return apiClient.post<T>(url, data, config);
+export const post = (url: string, data?: any, config?: any) => {
+  return apiClient.post(url, data, config);
 };
 
 /**
  * Type-safe PUT request
  */
-export const put = <T = any>(url: string, data?: any): Promise<AxiosResponse<T>> => {
-  return apiClient.put<T>(url, data);
+export const put = (url: string, data?: any) => {
+  return apiClient.put(url, data);
 };
 
 /**
  * Type-safe DELETE request
  */
-export const del = <T = any>(url: string): Promise<AxiosResponse<T>> => {
-  return apiClient.delete<T>(url);
+export const del = (url: string) => {
+  return apiClient.delete(url);
 };
 
 /**
  * Type-safe PATCH request
  */
-export const patch = <T = any>(url: string, data?: any): Promise<AxiosResponse<T>> => {
-  return apiClient.patch<T>(url, data);
+export const patch = (url: string, data?: any) => {
+  return apiClient.patch(url, data);
 };
 
 // ============================================================================
@@ -141,7 +141,7 @@ export const uploadFile = (
   url: string,
   file: File | FormData,
   onUploadProgress?: (progressEvent: any) => void
-): Promise<AxiosResponse> => {
+) => {
   const formData = file instanceof FormData ? file : new FormData();
   if (!(file instanceof FormData)) {
     formData.append('file', file);
